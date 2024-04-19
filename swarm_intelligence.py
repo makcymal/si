@@ -15,6 +15,8 @@ class Agent:
     Соответственно, зависит от самой функции
     """
 
+    __slots__ = ["coord", "value"]
+
     def __init__(self, func: AbstractFunc, coord: ndarray = None):
         """
         Новая точка + значение в ней
