@@ -15,19 +15,19 @@ class Agent:
     Соответственно, зависит от самой функции
     """
 
-    __slots__ = ["coord", "value"]
+    __slots__ = ["point", "value"]
 
-    def __init__(self, func: AbstractFunc, coord: ndarray = None):
+    def __init__(self, func: AbstractFunc, point: ndarray = None):
         """
         Новая точка + значение в ней
         AbstractFunc знает о своей области определения и умеет генерировать случайные точки в ней
-        coord задано - используется как заданная точка, нет - генерируется случайная
+        point задано - используется как заданная точка, нет - генерируется случайная
         """
 
-        if not coord:
-            coord = func.domain_random()
-        self.coord = coord
-        self.value = func(coord)
+        if not point:
+            point = func.domain_random()
+        self.point = point
+        self.value = func(point)
 
     def move(
         self,
@@ -46,10 +46,10 @@ class Agent:
         """
 
         if not rel:
-            clamped = func.move_coord(self.coord, other - self.coord, clamp)
+            clamped = func.move_coord(self.point, other - self.point, clamp)
         else:
-            clamped = func.move_coord(self.coord, other, clamp)
-        self.value = func(self.coord)
+            clamped = func.move_coord(self.point, other, clamp)
+        self.value = func(self.point)
         return clamped
 
     def l1_dist(self, other: ndarray) -> float:
@@ -57,21 +57,21 @@ class Agent:
         L1 норма разности между текущей и заданной точкой
         Сумма модулей компонент разности
         """
-        return np.sum(np.abs(self.coord - other))
+        return np.sum(np.abs(self.point - other))
 
     def l2_dist(self, other: ndarray) -> float:
         """
         L2 норма разности между текущей и заданной точкой
         Корень суммы квадратов компонент разности
         """
-        return np.sqrt(np.sum((self.coord - other) ** 2))
+        return np.sqrt(np.sum((self.point - other) ** 2))
 
     def l_inf_dist(self, other: ndarray) -> float:
         """
         Linf норма разности между текущей и заданной точкой
         Максимум модулей компонент разности
         """
-        return np.max(np.abs(self.coord - other))
+        return np.max(np.abs(self.point - other))
 
 
 def best_agent(swarm: List[Agent], minimize=True) -> int:
@@ -222,7 +222,7 @@ def bee_colony(
             selected = [swarm[0]]
             while len(selected) < n and i < len(swarm):
                 for bee in selected:
-                    if swarm[i].l_inf_dist(bee.coord) < env_size:
+                    if swarm[i].l_inf_dist(bee.point) < env_size:
                         break
                 else:
                     selected.append(swarm[i])
@@ -240,13 +240,13 @@ def bee_colony(
 
         for guide in range(n_elite_sites):
             for _ in range(n_elites):
-                swarm[bee].move(func, func.neigh_random(swarm[guide].coord, neigh_diam))
+                swarm[bee].move(func, func.neigh_random(swarm[guide].point, neigh_diam))
                 bee += 1
             swarm[guide].move(func, func.domain_random())
 
         for guide in range(n_elite_sites, n_elite_sites + n_extra_sites):
             for _ in range(n_extras):
-                swarm[bee].move(func, func.neigh_random(swarm[guide].coord, neigh_diam))
+                swarm[bee].move(func, func.neigh_random(swarm[guide].point, neigh_diam))
                 bee += 1
             swarm[guide].move(func, func.domain_random())
 
@@ -292,13 +292,13 @@ def bee_colony_bench(
 
         for guide in range(n_elite_sites):
             for _ in range(n_elites):
-                swarm[bee].move(func, func.neigh_random(swarm[guide].coord, neigh_diam))
+                swarm[bee].move(func, func.neigh_random(swarm[guide].point, neigh_diam))
                 bee += 1
             swarm[guide].move(func, func.domain_random())
 
         for guide in range(n_elite_sites, n_elite_sites + n_extra_sites):
             for _ in range(n_extras):
-                swarm[bee].move(func, func.neigh_random(swarm[guide].coord, neigh_diam))
+                swarm[bee].move(func, func.neigh_random(swarm[guide].point, neigh_diam))
                 bee += 1
             swarm[guide].move(func, func.domain_random())
 
@@ -349,16 +349,16 @@ def particle_swarm(
 
     velocities = np.zeros(shape=(n_particles, func.dim()))
     for i, velocity in enumerate(velocities):
-        velocity = swarm[i].coord - func.domain_random()
+        velocity = swarm[i].point - func.domain_random()
 
     for gener in range(n_gener):
         for i, velocity in enumerate(velocities):
             velocity = (
                 inertia_cf * velocity
-                + cognitive_cf * rng().random() * (each_best[i].coord - swarm[i].coord)
-                + social_cf * rng().random() * (swarm[glob_best].coord - swarm[i].coord)
+                + cognitive_cf * rng().random() * (each_best[i].point - swarm[i].point)
+                + social_cf * rng().random() * (swarm[glob_best].point - swarm[i].point)
             )
-            swarm[i].coord += velocity
+            swarm[i].point += velocity
 
         for accum, curr in zip(each_best, swarm):
             if curr.value < accum.value:
@@ -388,22 +388,23 @@ def particle_swarm_bench(
     func.eval_calls = 0
 
     swarm = [Agent(func) for _ in range(n_particles)]
-    each_best = cp(swarm)
     glob_best = best_agent(swarm)
+    each_best = cp(swarm)
+    
     minima = Agent(func)
 
     velocities = np.zeros(shape=(n_particles, func.dim()))
     for i, velocity in enumerate(velocities):
-        velocity = (func.domain_random() - swarm[i].coord) / 2
+        velocity = (func.domain_random() - swarm[i].point) / 2
 
     while func.eval_calls < eval_calls:
         for i, velocity in enumerate(velocities):
             velocity = (
                 inertia_cf * velocity
-                + cognitive_cf * rng().random() * (each_best[i].coord - swarm[i].coord)
-                + social_cf * rng().random() * (swarm[glob_best].coord - swarm[i].coord)
+                + cognitive_cf * rng.random() * (each_best[i].point - swarm[i].point)
+                + social_cf * rng.random() * (swarm[glob_best].point - swarm[i].point)
             )
-            if func.within_domain(swarm[i].coord + velocity):
+            if func.within_domain(swarm[i].point + velocity):
                 swarm[i].move(func, velocity, rel=True)
             else:
                 func.eval_calls += 1
