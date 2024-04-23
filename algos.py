@@ -17,8 +17,8 @@ class Agent:
 
     def __init__(self, func: Func, point=None):
         if not point:
-            point = func.random_point()
-            self.value = func(point)
+            self.point = func.random_point()
+            self.value = func(self.point)
         else:
             self.point = point
             self.value = func(point)
@@ -108,7 +108,7 @@ class ParticleSwarm:
         evolution = {}
 
         swarm = [Particle(func) for _ in range(self.n_particles)]
-        minima = cp(min(swarm, key=lambda idx: swarm[idx].value))
+        minima = cp(min(swarm, key=lambda particle: particle.value))
 
         while func.eval_calls < eval_calls_lim:
             for particle in swarm:
@@ -154,7 +154,7 @@ class BeeHive:
         swarm.sort(key=lambda agent: agent.value)
 
         minima = cp(swarm[0])
-        nearto_dist = 2 * func.diameter / (self.n_elite_sites + self.n_extra_sites)
+        nearto_dist = 2 * func.diameter() / (self.n_elite_sites + self.n_extra_sites)
 
         while func.eval_calls < eval_calls_lim:
             bee = self.n_elite_sites + self.n_extra_sites
@@ -248,7 +248,7 @@ class AntHill:
             prob_sum = 0
             
             for i, neigh in enumerate(hill):
-                if ant == neigh:
+                if all(ant.point == neigh.point):
                     continue
 
                 dist = sum(d**2 for d in neigh.point - ant.point) ** 0.5
