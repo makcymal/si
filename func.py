@@ -83,10 +83,10 @@ class HyperCube:
                     for i in range(self.dims)
                     if by[i] != 0
                 )
-                return point + by * alpha, True
+                return point + 0.99 * alpha * by, True
 
             case Clamping.STAND_STILL:
-                return point, True
+                return cp(point), True
 
             case Clamping.FOREACH_COMPONENT:
                 for i in range(self.dims):
@@ -115,7 +115,7 @@ class HyperCube:
                 + [
                     r
                     * np.sin(i)
-                    * reduce(mul, (np.cos(a[j]) for j in range(i + 1, self.dims - 1)))
+                    * reduce(mul, (np.cos(a[j]) for j in range(i + 1, self.dims - 1)), 1)
                     for i in range(self.dims - 1)
                 ]
             )
@@ -182,7 +182,11 @@ class Func:
     ) -> ndarray:
         if nearto is not None:
             self.hcube._assert_ndarray_point(nearto)
-            assert self.hcube._is_within(nearto) and dist > 0
+            if not (self.hcube._is_within(nearto) and dist > 0):
+                print(nearto, self.hcube.lo, self.hcube.hi)
+                print(self.hcube._is_within(nearto))
+                print(dist)
+                raise AssertionError
         return self.hcube._random_point(nearto, dist, cubic)
 
     def move(
@@ -217,7 +221,7 @@ def ackley(dims: int):
     B = 0.2
     C = 2 * np.pi
     return Func(
-        "Acley",
+        "Ackley",
         lambda x: -A * np.exp(-B * np.sqrt(sum(x_i**2 for x_i in x) / dims))
         - np.exp(np.sum(np.cos(C * x_i) for x_i in x) / dims)
         + A
@@ -290,7 +294,7 @@ def forest(dims: int):
     assert dims % 2 == 0
     return Func(
         "Forest",
-        lambda x: np.sum(
+        lambda x: -np.sum(
             np.sin(np.sqrt(np.abs(x[2 * i] - 1.3) + np.abs(x[2 * i + 1] - 2)))
             + np.cos(
                 np.sqrt(np.abs(np.sin(x[2 * i])))
@@ -310,7 +314,7 @@ def megacity(dims: int):
     assert dims % 2 == 0
     return Func(
         "Megacity",
-        lambda x: np.sum(
+        lambda x: -np.sum(
             np.floor(
                 (
                     np.sin(np.sqrt(np.abs(x[2 * i] - 1.3) + np.abs(x[2 * i + 1] - 2)))
@@ -331,6 +335,3 @@ def megacity(dims: int):
 
 
 targets = [ackley, griewank, schwefel, rosenbrock, skin, forest, megacity]
-
-
-ackley_func = ackley(2)
